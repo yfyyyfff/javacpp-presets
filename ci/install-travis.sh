@@ -1,7 +1,11 @@
 #!/bin/bash 
 set -vx
 
+# prevent Travis CI from terminating builds after 10 minutes with no output
 while true; do echo .; sleep 60; done &
+
+# abort before the maximum build time to be able to save the cache
+(sleep 7000; sudo killall -s SIGINT java; sudo killall bazel) &
 
 sudo fallocate -l 4GB /swapfile
 sudo chmod 600 /swapfile
@@ -302,8 +306,6 @@ if  [[ "$OS" == "linux-x86" ]] || [[ "$OS" == "linux-x86_64" ]] || [[ "$OS" =~ a
    DOCKER_CONTAINER_ID=$(docker ps | grep centos | awk '{print $1}')
    echo "container id is $DOCKER_CONTAINER_ID"
     if [ "$1" == "nodeploy" ]; then
-       # abort before the maximum build time to be able to save the cache
-       (sleep 7200; sudo killall -s SIGINT java; sudo killall bazel) &
        docker exec -ti $DOCKER_CONTAINER_ID /bin/bash -xec "source scl_source enable $SCL_ENABLE || true; . $HOME/vars.list; cd $HOME/build/javacpp-presets; bash cppbuild.sh install $PROJ -platform=$OS -extension=$EXT"; export BUILD_STATUS=0
     elif [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
        echo "Not a pull request so attempting to deploy using docker"
@@ -334,8 +336,6 @@ if  [[ "$OS" == "linux-x86" ]] || [[ "$OS" == "linux-x86_64" ]] || [[ "$OS" =~ a
 else	
    echo "Building $PROJ, with additional build flags $BUILD_COMPILER $BUILD_OPTIONS $BUILD_ROOT"
    if [ "$1" == "nodeploy" ]; then
-      # abort before the maximum build time to be able to save the cache
-      (sleep 7200; sudo killall -s SIGINT java; sudo killall bazel) &
       bash cppbuild.sh install $PROJ -platform=$OS -extension=$EXT; export BUILD_STATUS=0
    elif [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
       echo "Not a pull request so attempting to deploy"
